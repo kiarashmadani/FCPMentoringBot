@@ -10,6 +10,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "express": "^5.2.1",
     "https-proxy-agent": "^7.0.6",
     "node-telegram-bot-api": "^0.67.0"
   }
