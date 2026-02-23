@@ -4,6 +4,8 @@ const express = require('express');
 const token = process.env.TOKEN;
 const url = process.env.RENDER_EXTERNAL_URL;
 
+const GROUP_ID = -1003742359447;
+
 const bot = new TelegramBot(token);
 const app = express();
 
@@ -16,11 +18,36 @@ app.post(`/bot${token}`, (req, res) => {
     res.sendStatus(200);
 });
 
-bot.on('message', (msg) => {
-    console.log(msg.chat.id);
+bot.on('message', async (msg) => {
+
+    if (msg.chat.id === GROUP_ID) {
+
+        if (msg.reply_to_message && msg.text) {
+
+            const original = msg.reply_to_message;
+
+            if (original.forward_from) {
+                const customerId = original.forward_from.id;
+
+                await bot.sendMessage(customerId, msg.text);
+            }
+        }
+
+        return;
+    }
+
+    try {
+        await bot.forwardMessage(
+            GROUP_ID,
+            msg.chat.id,
+            msg.message_id
+        );
+    } catch (err) {
+        console.log(err);
+    }
 });
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log("Server running...");
+    console.log("Support bot running...");
 });
