@@ -1,25 +1,5 @@
-const TelegramBot = require('node-telegram-bot-api');
-const express = require('express');
-
-const token = process.env.TOKEN;
-const url = process.env.RENDER_EXTERNAL_URL;
-
-const GROUP_ID = -1003742359447;
-
-const bot = new TelegramBot(token);
-const app = express();
-
-app.use(express.json());
-
-bot.setWebHook(`${url}/bot${token}`);
-
-app.post(`/bot${token}`, (req, res) => {
-    bot.processUpdate(req.body);
-    res.sendStatus(200);
-});
-
-// 👇 اینجا مپ ذخیره میکنیم
-const messageMap = new Map();
+// ذخیره وضعیت پاسخ داده شده
+const repliedTickets = new Set();
 
 bot.on('message', async (msg) => {
 
@@ -30,33 +10,49 @@ bot.on('message', async (msg) => {
 
             const repliedMessageId = msg.reply_to_message.message_id;
 
-            const customerId = messageMap.get(repliedMessageId);
+            // ❌ اگر قبلاً جواب داده شده
+            if (repliedTickets.has(repliedMessageId)) {
+                await bot.sendMessage(
+                    GROUP_ID,
+                    "⛔ این پیام قبلاً پاسخ داده شده.",
+                    { reply_to_message_id: msg.message_id }
+                );
+                return;
+            }
+
+            const customerId = groupToCustomerMap.get(repliedMessageId);
 
             if (customerId) {
+
+                // 🔒 قفل کردن تیکت
+                repliedTickets.add(repliedMessageId);
+
                 await bot.sendMessage(customerId, msg.text);
+
+                await bot.sendMessage(
+                    GROUP_ID,
+                    "✅ پاسخ ارسال شد.",
+                    { reply_to_message_id: msg.message_id }
+                );
             }
         }
 
         return;
     }
 
-    // اگر پیام از مشتری اومده
+    // پیام مشتری
     try {
+
         const sentMessage = await bot.forwardMessage(
             GROUP_ID,
             msg.chat.id,
             msg.message_id
         );
 
-        // 👇 ذخیره می‌کنیم
-        messageMap.set(sentMessage.message_id, msg.chat.id);
+        groupToCustomerMap.set(sentMessage.message_id, msg.chat.id);
+        customerToGroupMap.set(msg.message_id, sentMessage.message_id);
 
     } catch (err) {
         console.log(err);
     }
-});
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log("Support bot running...");
 });
