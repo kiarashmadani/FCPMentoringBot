@@ -18,17 +18,21 @@ app.post(`/bot${token}`, (req, res) => {
     res.sendStatus(200);
 });
 
+// 👇 اینجا مپ ذخیره میکنیم
+const messageMap = new Map();
+
 bot.on('message', async (msg) => {
 
+    // اگر پیام از گروه اپراتورهاست
     if (msg.chat.id === GROUP_ID) {
 
         if (msg.reply_to_message && msg.text) {
 
-            const original = msg.reply_to_message;
+            const repliedMessageId = msg.reply_to_message.message_id;
 
-            if (original.forward_from) {
-                const customerId = original.forward_from.id;
+            const customerId = messageMap.get(repliedMessageId);
 
+            if (customerId) {
                 await bot.sendMessage(customerId, msg.text);
             }
         }
@@ -36,12 +40,17 @@ bot.on('message', async (msg) => {
         return;
     }
 
+    // اگر پیام از مشتری اومده
     try {
-        await bot.forwardMessage(
+        const sentMessage = await bot.forwardMessage(
             GROUP_ID,
             msg.chat.id,
             msg.message_id
         );
+
+        // 👇 ذخیره می‌کنیم
+        messageMap.set(sentMessage.message_id, msg.chat.id);
+
     } catch (err) {
         console.log(err);
     }
