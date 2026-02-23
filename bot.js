@@ -71,7 +71,7 @@ bot.on('message', async (msg) => {
     // اگر پیام از مشتریه
     try {
 
-        const sentMessage = await bot.forwardMessage(
+        const sentMessage = await bot.copyMessage(
             GROUP_ID,
             msg.chat.id,
             msg.message_id
@@ -93,18 +93,26 @@ bot.on('edited_message', async (msg) => {
 
     const groupMessageId = customerToGroupMap.get(msg.message_id);
 
-    if (groupMessageId) {
-        try {
-            await bot.editMessageText(
-                `✏ پیام ویرایش شد:\n\n${msg.text}`,
-                {
-                    chat_id: GROUP_ID,
-                    message_id: groupMessageId
-                }
-            );
-        } catch (err) {
-            console.log("Edit Error:", err.message);
-        }
+    if (!groupMessageId) return;
+
+    try {
+        await bot.copyMessage(
+            GROUP_ID,
+            msg.chat.id,
+            msg.message_id,
+            {
+                reply_to_message_id: groupMessageId
+            }
+        );
+
+        await bot.sendMessage(
+            GROUP_ID,
+            "✏ کاربر پیامش را ویرایش کرد.",
+            { reply_to_message_id: groupMessageId }
+        );
+
+    } catch (err) {
+        console.log("Edit error:", err.message);
     }
 });
 
