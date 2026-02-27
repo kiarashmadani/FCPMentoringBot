@@ -17,6 +17,7 @@ app.use(express.json());
 // ==============================
 const groupToCustomerMap = new Map();
 const customerToGroupMap = new Map();
+const operatorToCustomerMap = new Map(); // جدید
 
 // ==============================
 // Webhook endpoint
@@ -26,14 +27,11 @@ app.post(`/bot${token}`, (req, res) => {
     res.sendStatus(200);
 });
 
-// ==============================
-// تنظیم Webhook
-// ==============================
 bot.setWebHook(`${url}/bot${token}`);
 
 
 // ==============================
-// مدیریت پیام‌ها
+// پیام جدید
 // ==============================
 bot.on('message', async (msg) => {
 
@@ -50,11 +48,18 @@ bot.on('message', async (msg) => {
         if (!customerId) return;
 
         try {
-            await bot.copyMessage(
+            const sent = await bot.copyMessage(
                 customerId,
                 GROUP_ID,
                 msg.message_id
             );
+
+            // ذخیره برای ادیت بعدی
+            operatorToCustomerMap.set(msg.message_id, {
+                customerId: customerId,
+                customerMessageId: sent.message_id
+            });
+
         } catch (err) {
             console.log("Send error:", err.message);
         }
@@ -90,42 +95,55 @@ bot.on('message', async (msg) => {
 // ==============================
 bot.on('edited_message', async (msg) => {
 
-    const groupMessageId = customerToGroupMap.get(msg.message_id);
-    if (!groupMessageId) return;
+    // اگر از مشتری بوده
+    if (msg.chat.id !== GROUP_ID) {
 
-    try {
+        const groupMessageId = customerToGroupMap.get(msg.message_id);
+        if (!groupMessageId) return;
 
-        if (msg.text) {
-
-            await bot.editMessageText(
-                msg.text,
-                {
+        try {
+            if (msg.text) {
+                await bot.editMessageText(msg.text, {
                     chat_id: GROUP_ID,
                     message_id: groupMessageId
-                }
-            );
-
-        } else if (msg.caption) {
-
-            await bot.editMessageCaption(
-                msg.caption,
-                {
+                });
+            } else if (msg.caption) {
+                await bot.editMessageCaption(msg.caption, {
                     chat_id: GROUP_ID,
                     message_id: groupMessageId
-                }
-            );
-
+                });
+            }
+        } catch (err) {
+            console.log("Customer edit error:", err.message);
         }
+    }
 
-    } catch (err) {
-        console.log("Edit error:", err.message);
+    // اگر از اپراتور بوده
+    else {
+
+        const data = operatorToCustomerMap.get(msg.message_id);
+        if (!data) return;
+
+        try {
+            if (msg.text) {
+                await bot.editMessageText(msg.text, {
+                    chat_id: data.customerId,
+                    message_id: data.customerMessageId
+                });
+            } else if (msg.caption) {
+                await bot.editMessageCaption(msg.caption, {
+                    chat_id: data.customerId,
+                    message_id: data.customerMessageId
+                });
+            }
+        } catch (err) {
+            console.log("Operator edit error:", err.message);
+        }
     }
 
 });
 
 
-// ==============================
-// اجرای سرور
 // ==============================
 app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
