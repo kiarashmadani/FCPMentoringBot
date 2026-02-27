@@ -1,58 +1,96 @@
 const TelegramBot = require('node-telegram-bot-api');
-const express = require('express');
 
 const token = process.env.TOKEN;
-const url = process.env.RENDER_EXTERNAL_URL;
-
 const GROUP_ID = -1003742359447;
 
-const bot = new TelegramBot(token);
-const app = express();
+const bot = new TelegramBot(token, { polling: true });
 
-app.use(express.json());
+// ==============================
+// حافظه موقت
+// ==============================
+const groupToCustomerMap = new Map();
+const customerToGroupMap = new Map();
 
-bot.setWebHook(`${url}/bot${token}`);
 
-app.post(`/bot${token}`, (req, res) => {
-    bot.processUpdate(req.body);
-    res.sendStatus(200);
-});
-
-const messageMap = new Map();
-
+// ==============================
+// مدیریت پیام‌ها
+// ==============================
 bot.on('message', async (msg) => {
 
+    // =========================
+    // اگر پیام داخل گروه است (اپراتورها)
+    // =========================
     if (msg.chat.id === GROUP_ID) {
 
-        if (msg.reply_to_message && msg.text) {
+        if (!msg.reply_to_message) return;
 
-            const repliedMessageId = msg.reply_to_message.message_id;
+        const groupMessageId = msg.reply_to_message.message_id;
+        const customerId = groupToCustomerMap.get(groupMessageId);
 
-            const customerId = messageMap.get(repliedMessageId);
+        if (!customerId) return;
 
-            if (customerId) {
-                await bot.sendMessage(customerId, msg.text);
-            }
+        try {
+            // ارسال هر نوع پیام (متن، عکس، ویس، فایل، ...)
+            await bot.copyMessage(
+                customerId,
+                GROUP_ID,
+                msg.message_id
+            );
+        } catch (err) {
+            console.log("Send error:", err.message);
         }
 
         return;
     }
 
+    // =========================
+    // اگر پیام از مشتری است
+    // =========================
+    if (msg.chat.id !== GROUP_ID) {
+
+        try {
+            const sentMessage = await bot.copyMessage(
+                GROUP_ID,
+                msg.chat.id,
+                msg.message_id
+            );
+
+            groupToCustomerMap.set(sentMessage.message_id, msg.chat.id);
+            customerToGroupMap.set(msg.message_id, sentMessage.message_id);
+
+        } catch (err) {
+            console.log("Copy error:", err.message);
+        }
+    }
+
+});
+
+
+// ==============================
+// ادیت پیام مشتری
+// ==============================
+bot.on('edited_message', async (msg) => {
+
+    const groupMessageId = customerToGroupMap.get(msg.message_id);
+    if (!groupMessageId) return;
+
     try {
-        const sentMessage = await bot.forwardMessage(
+        await bot.copyMessage(
             GROUP_ID,
             msg.chat.id,
-            msg.message_id
+            msg.message_id,
+            { reply_to_message_id: groupMessageId }
         );
 
-        messageMap.set(sentMessage.message_id, msg.chat.id);
+        await bot.sendMessage(
+            GROUP_ID,
+            "✏ کاربر پیامش را ویرایش کرد.",
+            { reply_to_message_id: groupMessageId }
+        );
 
     } catch (err) {
-        console.log(err);
+        console.log("Edit error:", err.message);
     }
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log("Support bot running...");
-});
+console.log("🤖 Bot is running...");
