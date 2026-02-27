@@ -72,17 +72,6 @@ bot.on('message', async (msg) => {
     // =========================
     if (msg.chat.id !== GROUP_ID) {
 
-        // 👍 ریکشن قطعی
-        try {
-            await bot._request('setMessageReaction', {
-                chat_id: msg.chat.id,
-                message_id: msg.message_id,
-                reaction: [{ type: "emoji", emoji: "👍" }]
-            });
-        } catch (err) {
-            console.log("Reaction error:", err.message);
-        }
-
         const fullName = `${msg.from.first_name || ''} ${msg.from.last_name || ''}`.trim();
         const username = msg.from.username ? `@${msg.from.username}` : '';
         const header = `👤 ${fullName} ${username}\n──────────────────\n`;
