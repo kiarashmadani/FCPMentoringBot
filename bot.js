@@ -21,20 +21,14 @@ app.post(`/bot${token}`, (req, res) => {
 const messageMap = new Map();
 
 bot.on('message', async (msg) => {
-
     if (msg.chat.id === GROUP_ID) {
-
         if (msg.reply_to_message && msg.text) {
-
             const repliedMessageId = msg.reply_to_message.message_id;
-
             const customerId = messageMap.get(repliedMessageId);
-
             if (customerId) {
                 await bot.sendMessage(customerId, msg.text);
             }
         }
-
         return;
     }
 
@@ -46,6 +40,8 @@ bot.on('message', async (msg) => {
         );
 
         messageMap.set(sentMessage.message_id, msg.chat.id);
+
+        await bot.sendMessage(msg.chat.id, "پیام شما برای بررسی به تی ای ارسال شد، در اسرع وقت پاسخ داده میشود.");
 
     } catch (err) {
         console.log(err);
