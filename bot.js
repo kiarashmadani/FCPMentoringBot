@@ -55,7 +55,6 @@ bot.on('message', async (msg) => {
                 msg.message_id
             );
 
-            // ذخیره برای ادیت بعدی اپراتور
             operatorToCustomerMap.set(msg.message_id, {
                 customerId: customerId,
                 customerMessageId: sent.message_id
@@ -73,29 +72,53 @@ bot.on('message', async (msg) => {
     // =========================
     if (msg.chat.id !== GROUP_ID) {
 
-        // 👍 ریکشن روی پیام مشتری
+        // 👍 ریکشن قطعی
         try {
-            await bot.setMessageReaction(
-                msg.chat.id,
-                msg.message_id,
-                [{ type: "emoji", emoji: "👍" }]
-            );
+            await bot._request('setMessageReaction', {
+                chat_id: msg.chat.id,
+                message_id: msg.message_id,
+                reaction: [{ type: "emoji", emoji: "👍" }]
+            });
         } catch (err) {
             console.log("Reaction error:", err.message);
         }
 
-        try {
-            const sentMessage = await bot.copyMessage(
-                GROUP_ID,
-                msg.chat.id,
-                msg.message_id
-            );
+        const fullName = `${msg.from.first_name || ''} ${msg.from.last_name || ''}`.trim();
+        const username = msg.from.username ? `@${msg.from.username}` : '';
+        const header = `👤 ${fullName} ${username}\n──────────────────\n`;
 
-            groupToCustomerMap.set(sentMessage.message_id, msg.chat.id);
-            customerToGroupMap.set(msg.message_id, sentMessage.message_id);
+        try {
+
+            // اگر پیام متنی است
+            if (msg.text) {
+
+                const sentMessage = await bot.sendMessage(
+                    GROUP_ID,
+                    header + msg.text
+                );
+
+                groupToCustomerMap.set(sentMessage.message_id, msg.chat.id);
+                customerToGroupMap.set(msg.message_id, sentMessage.message_id);
+
+            }
+            // اگر مدیا است
+            else {
+
+                const sentMessage = await bot.copyMessage(
+                    GROUP_ID,
+                    msg.chat.id,
+                    msg.message_id,
+                    {
+                        caption: header + (msg.caption || '')
+                    }
+                );
+
+                groupToCustomerMap.set(sentMessage.message_id, msg.chat.id);
+                customerToGroupMap.set(msg.message_id, sentMessage.message_id);
+            }
 
         } catch (err) {
-            console.log("Customer copy error:", err.message);
+            console.log("Customer send error:", err.message);
         }
     }
 
