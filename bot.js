@@ -1,19 +1,4 @@
-const TelegramBot = require('node-telegram-bot-api');
-const express = require('express');
-
-const token = process.env.TOKEN;
-const url = process.env.RENDER_EXTERNAL_URL;
-
-const GROUP_ID = -1003742359447;
-
-const bot = new TelegramBot(token);
-const app = express();
-
-app.use(express.json());
-
-bot.setWebHook(`${url}/bot${token}`);
-
-app.post(`/bot${token}`, (req, res) => {
+, (req, res) => {
     bot.processUpdate(req.body);
     res.sendStatus(200);
 });
@@ -21,14 +6,20 @@ app.post(`/bot${token}`, (req, res) => {
 const messageMap = new Map();
 
 bot.on('message', async (msg) => {
+
     if (msg.chat.id === GROUP_ID) {
+
         if (msg.reply_to_message && msg.text) {
+
             const repliedMessageId = msg.reply_to_message.message_id;
+
             const customerId = messageMap.get(repliedMessageId);
+
             if (customerId) {
                 await bot.sendMessage(customerId, msg.text);
             }
         }
+
         return;
     }
 
@@ -40,8 +31,6 @@ bot.on('message', async (msg) => {
         );
 
         messageMap.set(sentMessage.message_id, msg.chat.id);
-
-        await bot.sendMessage(msg.chat.id, "پیام شما برای بررسی به تی ای ارسال شد، در اسرع وقت پاسخ داده میشود.");
 
     } catch (err) {
         console.log(err);
