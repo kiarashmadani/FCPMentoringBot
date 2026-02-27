@@ -15,9 +15,9 @@ app.use(express.json());
 // ==============================
 // حافظه موقت
 // ==============================
-const groupToCustomerMap = new Map();
-const customerToGroupMap = new Map();
-const operatorToCustomerMap = new Map(); // جدید
+const groupToCustomerMap = new Map();      // پیام گروه → آیدی مشتری
+const customerToGroupMap = new Map();      // پیام مشتری → پیام گروه
+const operatorToCustomerMap = new Map();   // پیام اپراتور → پیام مشتری
 
 // ==============================
 // Webhook endpoint
@@ -27,16 +27,17 @@ app.post(`/bot${token}`, (req, res) => {
     res.sendStatus(200);
 });
 
+// تنظیم webhook
 bot.setWebHook(`${url}/bot${token}`);
 
 
 // ==============================
-// پیام جدید
+// مدیریت پیام جدید
 // ==============================
 bot.on('message', async (msg) => {
 
     // =========================
-    // اگر پیام داخل گروه است (اپراتورها)
+    // اگر پیام داخل گروه اپراتورهاست
     // =========================
     if (msg.chat.id === GROUP_ID) {
 
@@ -54,55 +55,61 @@ bot.on('message', async (msg) => {
                 msg.message_id
             );
 
-            // ذخیره برای ادیت بعدی
+            // ذخیره برای ادیت بعدی اپراتور
             operatorToCustomerMap.set(msg.message_id, {
                 customerId: customerId,
                 customerMessageId: sent.message_id
             });
 
         } catch (err) {
-            console.log("Send error:", err.message);
+            console.log("Operator send error:", err.message);
         }
 
         return;
     }
 
-// =========================
-// اگر پیام از مشتری است
-// =========================
-if (msg.chat.id !== GROUP_ID) {
+    // =========================
+    // اگر پیام از مشتری است
+    // =========================
+    if (msg.chat.id !== GROUP_ID) {
 
-    // 👍 ریکشن بزن
-    try {
-        await bot.setMessageReaction(msg.chat.id, msg.message_id, [
-            { type: "emoji", emoji: "👍" }
-        ]);
-    } catch (err) {
-        console.log("Reaction error:", err.message);
+        // 👍 ریکشن روی پیام مشتری
+        try {
+            await bot.setMessageReaction(
+                msg.chat.id,
+                msg.message_id,
+                [{ type: "emoji", emoji: "👍" }]
+            );
+        } catch (err) {
+            console.log("Reaction error:", err.message);
+        }
+
+        try {
+            const sentMessage = await bot.copyMessage(
+                GROUP_ID,
+                msg.chat.id,
+                msg.message_id
+            );
+
+            groupToCustomerMap.set(sentMessage.message_id, msg.chat.id);
+            customerToGroupMap.set(msg.message_id, sentMessage.message_id);
+
+        } catch (err) {
+            console.log("Customer copy error:", err.message);
+        }
     }
 
-    try {
-        const sentMessage = await bot.copyMessage(
-            GROUP_ID,
-            msg.chat.id,
-            msg.message_id
-        );
-
-        groupToCustomerMap.set(sentMessage.message_id, msg.chat.id);
-        customerToGroupMap.set(msg.message_id, sentMessage.message_id);
-
-    } catch (err) {
-        console.log("Copy error:", err.message);
-    }
-}
+});
 
 
 // ==============================
-// ادیت پیام مشتری
+// ادیت پیام‌ها
 // ==============================
 bot.on('edited_message', async (msg) => {
 
-    // اگر از مشتری بوده
+    // =========================
+    // ادیت مشتری
+    // =========================
     if (msg.chat.id !== GROUP_ID) {
 
         const groupMessageId = customerToGroupMap.get(msg.message_id);
@@ -125,7 +132,9 @@ bot.on('edited_message', async (msg) => {
         }
     }
 
-    // اگر از اپراتور بوده
+    // =========================
+    // ادیت اپراتور
+    // =========================
     else {
 
         const data = operatorToCustomerMap.get(msg.message_id);
@@ -151,6 +160,8 @@ bot.on('edited_message', async (msg) => {
 });
 
 
+// ==============================
+// اجرای سرور
 // ==============================
 app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
