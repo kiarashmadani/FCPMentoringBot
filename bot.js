@@ -1,9 +1,16 @@
 const TelegramBot = require('node-telegram-bot-api');
+const express = require('express');
 
 const token = process.env.TOKEN;
+const url = process.env.RENDER_EXTERNAL_URL;
+
 const GROUP_ID = -1003742359447;
+const PORT = process.env.PORT || 3000;
 
 const bot = new TelegramBot(token);
+const app = express();
+
+app.use(express.json());
 
 // ==============================
 // حافظه موقت
@@ -11,9 +18,22 @@ const bot = new TelegramBot(token);
 const groupToCustomerMap = new Map();
 const customerToGroupMap = new Map();
 
+// ==============================
+// Webhook endpoint
+// ==============================
+app.post(`/bot${token}`, (req, res) => {
+    bot.processUpdate(req.body);
+    res.sendStatus(200);
+});
 
 // ==============================
-// پیام جدید
+// تنظیم Webhook
+// ==============================
+bot.setWebHook(`${url}/bot${token}`);
+
+
+// ==============================
+// مدیریت پیام‌ها
 // ==============================
 bot.on('message', async (msg) => {
 
@@ -66,7 +86,7 @@ bot.on('message', async (msg) => {
 
 
 // ==============================
-// ادیت پیام مشتری (نسخه حرفه‌ای)
+// ادیت پیام مشتری
 // ==============================
 bot.on('edited_message', async (msg) => {
 
@@ -75,7 +95,6 @@ bot.on('edited_message', async (msg) => {
 
     try {
 
-        // اگر پیام متنی است
         if (msg.text) {
 
             await bot.editMessageText(
@@ -86,9 +105,7 @@ bot.on('edited_message', async (msg) => {
                 }
             );
 
-        }
-        // اگر مدیا با کپشن است
-        else if (msg.caption) {
+        } else if (msg.caption) {
 
             await bot.editMessageCaption(
                 msg.caption,
@@ -106,4 +123,10 @@ bot.on('edited_message', async (msg) => {
 
 });
 
-console.log("🤖 Bot is running...");
+
+// ==============================
+// اجرای سرور
+// ==============================
+app.listen(PORT, () => {
+    console.log(`🚀 Server running on port ${PORT}`);
+});
