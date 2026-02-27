@@ -67,27 +67,34 @@ bot.on('message', async (msg) => {
         return;
     }
 
-    // =========================
-    // اگر پیام از مشتری است
-    // =========================
-    if (msg.chat.id !== GROUP_ID) {
+// =========================
+// اگر پیام از مشتری است
+// =========================
+if (msg.chat.id !== GROUP_ID) {
 
-        try {
-            const sentMessage = await bot.copyMessage(
-                GROUP_ID,
-                msg.chat.id,
-                msg.message_id
-            );
-
-            groupToCustomerMap.set(sentMessage.message_id, msg.chat.id);
-            customerToGroupMap.set(msg.message_id, sentMessage.message_id);
-
-        } catch (err) {
-            console.log("Copy error:", err.message);
-        }
+    // 👍 ریکشن بزن
+    try {
+        await bot.setMessageReaction(msg.chat.id, msg.message_id, [
+            { type: "emoji", emoji: "👍" }
+        ]);
+    } catch (err) {
+        console.log("Reaction error:", err.message);
     }
 
-});
+    try {
+        const sentMessage = await bot.copyMessage(
+            GROUP_ID,
+            msg.chat.id,
+            msg.message_id
+        );
+
+        groupToCustomerMap.set(sentMessage.message_id, msg.chat.id);
+        customerToGroupMap.set(msg.message_id, sentMessage.message_id);
+
+    } catch (err) {
+        console.log("Copy error:", err.message);
+    }
+}
 
 
 // ==============================
