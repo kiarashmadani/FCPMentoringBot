@@ -3,7 +3,7 @@ const TelegramBot = require('node-telegram-bot-api');
 const token = process.env.TOKEN;
 const GROUP_ID = -1003742359447;
 
-const bot = new TelegramBot(token, { polling: true });
+const bot = new TelegramBot(token);
 
 // ==============================
 // حافظه موقت
@@ -13,7 +13,7 @@ const customerToGroupMap = new Map();
 
 
 // ==============================
-// مدیریت پیام‌ها
+// پیام جدید
 // ==============================
 bot.on('message', async (msg) => {
 
@@ -30,7 +30,6 @@ bot.on('message', async (msg) => {
         if (!customerId) return;
 
         try {
-            // ارسال هر نوع پیام (متن، عکس، ویس، فایل، ...)
             await bot.copyMessage(
                 customerId,
                 GROUP_ID,
@@ -67,7 +66,7 @@ bot.on('message', async (msg) => {
 
 
 // ==============================
-// ادیت پیام مشتری
+// ادیت پیام مشتری (نسخه حرفه‌ای)
 // ==============================
 bot.on('edited_message', async (msg) => {
 
@@ -75,22 +74,36 @@ bot.on('edited_message', async (msg) => {
     if (!groupMessageId) return;
 
     try {
-        await bot.copyMessage(
-            GROUP_ID,
-            msg.chat.id,
-            msg.message_id,
-            { reply_to_message_id: groupMessageId }
-        );
 
-        await bot.sendMessage(
-            GROUP_ID,
-            "✏ کاربر پیامش را ویرایش کرد.",
-            { reply_to_message_id: groupMessageId }
-        );
+        // اگر پیام متنی است
+        if (msg.text) {
+
+            await bot.editMessageText(
+                msg.text,
+                {
+                    chat_id: GROUP_ID,
+                    message_id: groupMessageId
+                }
+            );
+
+        }
+        // اگر مدیا با کپشن است
+        else if (msg.caption) {
+
+            await bot.editMessageCaption(
+                msg.caption,
+                {
+                    chat_id: GROUP_ID,
+                    message_id: groupMessageId
+                }
+            );
+
+        }
 
     } catch (err) {
         console.log("Edit error:", err.message);
     }
+
 });
 
 console.log("🤖 Bot is running...");
