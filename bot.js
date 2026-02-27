@@ -1,4 +1,19 @@
-, (req, res) => {
+const TelegramBot = require('node-telegram-bot-api');
+const express = require('express');
+
+const token = process.env.TOKEN;
+const url = process.env.RENDER_EXTERNAL_URL;
+
+const GROUP_ID = -1003742359447;
+
+const bot = new TelegramBot(token);
+const app = express();
+
+app.use(express.json());
+
+bot.setWebHook(${url}/bot${token});
+
+app.post(/bot${token}, (req, res) => {
     bot.processUpdate(req.body);
     res.sendStatus(200);
 });
