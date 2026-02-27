@@ -71,16 +71,6 @@ bot.on('message', async (msg) => {
     // اگر پیام از مشتری است
     // =========================
     if (msg.chat.id !== GROUP_ID) {
-
-    try {
-        await bot.request('setMessageReaction', {
-            chat_id: msg.chat.id,
-            message_id: msg.message_id,
-            reaction_type: '👍'
-        });
-    } catch (err) {
-        console.log("Add reaction error:", err.message);
-    }
         
         const fullName = `${msg.from.first_name || ''} ${msg.from.last_name || ''}`.trim();
         const username = msg.from.username ? `@${msg.from.username}` : '';
