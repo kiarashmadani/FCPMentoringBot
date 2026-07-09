@@ -12,33 +12,19 @@ const app = express();
 
 app.use(express.json());
 
-// ==============================
-// حافظه موقت
-// ==============================
-const groupToCustomerMap = new Map();      // پیام گروه → آیدی مشتری
-const customerToGroupMap = new Map();      // پیام مشتری → پیام گروه
-const operatorToCustomerMap = new Map();   // پیام اپراتور → پیام مشتری
+const groupToCustomerMap = new Map();
+const customerToGroupMap = new Map();   
+const operatorToCustomerMap = new Map(); 
 
-// ==============================
-// Webhook endpoint
-// ==============================
 app.post(`/bot${token}`, (req, res) => {
     bot.processUpdate(req.body);
     res.sendStatus(200);
 });
 
-// تنظیم webhook
 bot.setWebHook(`${url}/bot${token}`);
 
-
-// ==============================
-// مدیریت پیام جدید
-// ==============================
 bot.on('message', async (msg) => {
 
-    // =========================
-    // اگر پیام داخل گروه اپراتورهاست
-    // =========================
     if (msg.chat.id === GROUP_ID) {
 
         if (!msg.reply_to_message) return;
@@ -67,9 +53,6 @@ bot.on('message', async (msg) => {
         return;
     }
 
-    // =========================
-    // اگر پیام از مشتری است
-    // =========================
     if (msg.chat.id !== GROUP_ID) {
         
         const fullName = `${msg.from.first_name || ''} ${msg.from.last_name || ''}`.trim();
@@ -77,8 +60,6 @@ bot.on('message', async (msg) => {
         const header = `👤 ${fullName} ${username}\n──────────────────\n`;
 
         try {
-
-            // اگر پیام متنی است
             if (msg.text) {
 
                 const sentMessage = await bot.sendMessage(
@@ -90,7 +71,6 @@ bot.on('message', async (msg) => {
                 customerToGroupMap.set(msg.message_id, sentMessage.message_id);
 
             }
-            // اگر مدیا است
             else {
 
                 const sentMessage = await bot.copyMessage(
@@ -113,15 +93,8 @@ bot.on('message', async (msg) => {
 
 });
 
-
-// ==============================
-// ادیت پیام‌ها
-// ==============================
 bot.on('edited_message', async (msg) => {
 
-    // =========================
-    // ادیت مشتری
-    // =========================
     if (msg.chat.id !== GROUP_ID) {
 
         const groupMessageId = customerToGroupMap.get(msg.message_id);
@@ -143,10 +116,6 @@ bot.on('edited_message', async (msg) => {
             console.log("Customer edit error:", err.message);
         }
     }
-
-    // =========================
-    // ادیت اپراتور
-    // =========================
     else {
 
         const data = operatorToCustomerMap.get(msg.message_id);
@@ -171,10 +140,6 @@ bot.on('edited_message', async (msg) => {
 
 });
 
-
-// ==============================
-// اجرای سرور
-// ==============================
 app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
 });
